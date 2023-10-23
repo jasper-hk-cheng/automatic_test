@@ -1,0 +1,10 @@
+<resources>
+    <!--system-->
+    <string name="app_name">automatic_test</string>
+    <!--common-->
+    <!--<string name="row_label">Clicked on row</string>-->
+    <!--style-->
+    <string name="style_pure_color">pure color</string>
+    <string name="style_selector">selector</string>
+    <string name="style_layer">layer</string>
+</resources>

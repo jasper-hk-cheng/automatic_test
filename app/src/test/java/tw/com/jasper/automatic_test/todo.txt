@@ -1,0 +1,265 @@
+---
+@JvmStatic
+@ClassRule(order = 1)
+fun getExternalRes() = object : ExternalResource() {
+    override fun before() {
+        println("before get ExternalResource")
+    }
+
+    override fun after() {
+        println("after get ExternalResource")
+    }
+}
+---
+https://www.jianshu.com/p/e74ca1b42730
+---
+
+import android.util.Base64
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
+import java.security.*
+import java.security.spec.InvalidKeySpecException
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
+import javax.crypto.BadPaddingException
+import javax.crypto.Cipher
+import javax.crypto.IllegalBlockSizeException
+import javax.crypto.NoSuchPaddingException
+
+object RSACrypt {
+
+    val transformation = "RSA"
+    val ENCYPT_SISE = 117
+    val ENCYPT_MAX_SISE = 128
+
+    fun encryptBrPrivateKey(input: String, privateKey: PrivateKey): String {
+        val inputArray = input.toByteArray()
+        var temp: ByteArray? = null
+        var offset = 0
+        val byteArrayOutputStream = ByteArrayOutputStream()
+
+        val cipher = Cipher.getInstance(transformation)
+        cipher.init(Cipher.ENCRYPT_MODE, privateKey)
+
+        while (inputArray.size - offset > 0) {
+            if (inputArray.size - offset >= ENCYPT_SISE) {
+                temp = cipher.doFinal(inputArray, offset, ENCYPT_SISE)
+                offset += ENCYPT_SISE
+            } else {
+                temp = cipher.doFinal(inputArray, offset, inputArray.size - offset)
+                offset = inputArray.size
+            }
+            byteArrayOutputStream.write(temp)
+        }
+        byteArrayOutputStream.close()
+
+        // return Base64.encode( byteArrayOutputStream.toByteArray(), Base64.DEFAULT)
+        return Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.DEFAULT)
+    }
+
+    fun encryptBrPublicKey(input: String, privateKey: PublicKey): String {
+        val inputArray = input.toByteArray()
+        var temp: ByteArray? = null
+        var offset = 0
+        val byteArrayOutputStream = ByteArrayOutputStream()
+
+        val cipher = Cipher.getInstance(transformation)
+        cipher.init(Cipher.ENCRYPT_MODE, privateKey)
+
+        //拆成几个部分
+        while (inputArray.size - offset > 0) {
+            if (inputArray.size - offset >= ENCYPT_SISE) {
+                temp = cipher.doFinal(inputArray, offset, ENCYPT_SISE)
+                offset += ENCYPT_SISE
+            } else {
+                temp = cipher.doFinal(inputArray, offset, inputArray.size - offset)
+                offset = inputArray.size
+            }
+            byteArrayOutputStream.write(temp)
+        }
+        byteArrayOutputStream.close()
+
+        // return Base64.encode(byteArrayOutputStream.toByteArray())
+        return Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.DEFAULT)
+    }
+
+    fun decryptBrPublicKey(input: String, publicKey: PublicKey): String {
+        val inputArray = Base64.decode(input, Base64.DEFAULT)
+        var temp: ByteArray? = null
+        var offset = 0//偏一
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        val cipher = Cipher.getInstance(transformation)
+        cipher.init(Cipher.DECRYPT_MODE, privateKey)
+
+        //拆成几个部分
+        while (inputArray.size - offset > 0) {
+            if (inputArray.size - offset >= ENCYPT_MAX_SISE) {
+                temp = cipher.doFinal(inputArray, offset, ENCYPT_MAX_SISE)
+                offset += ENCYPT_MAX_SISE
+            } else {
+                temp = cipher.doFinal(inputArray, offset, inputArray.size - offset)
+                offset = inputArray.size
+            }
+            byteArrayOutputStream.write(temp)
+        }
+        byteArrayOutputStream.close()
+        return String(byteArrayOutputStream.toByteArray())
+    }
+
+    fun desryptBrPrivateKey(input: String, privateKey: PrivateKey): String {
+        val inputArray = Base64.decode(input, Base64.DEFAULT)
+        var temp: ByteArray? = null
+        var offset = 0
+        val byteArrayOutputStream = ByteArrayOutputStream()
+
+	val cipher = Cipher.getInstance(transformation)
+        cipher.init(Cipher.DECRYPT_MODE, privateKey)
+
+        while (inputArray.size - offset > 0) {
+            if (inputArray.size - offset >= ENCYPT_MAX_SISE) {
+                temp = cipher.doFinal(inputArray, offset, ENCYPT_MAX_SISE)
+                offset += ENCYPT_MAX_SISE
+            } else {
+                temp = cipher.doFinal(inputArray, offset, inputArray.size - offset)
+                offset = inputArray.size
+            }
+            byteArrayOutputStream.write(temp)
+        }
+        byteArrayOutputStream.close()
+        return String(byteArrayOutputStream.toByteArray())
+    }
+
+    val transformationByCandy = "RSA/ECB/OAEPWithSHA1AndMGF1Padding"
+
+    @Throws(NoSuchAlgorithmException::class, NoSuchPaddingException::class, InvalidKeyException::class, IllegalBlockSizeException::class, BadPaddingException::class)
+    fun encrypt(vararg args: Any): String? {
+        val plain = args[0] as String
+
+        val rsaPublicKey: PublicKey? = stringToPublicKey(publicKey)
+        // if (args.size == 1) {
+        //     rsaPublicKey = this.publicKey
+        // } else {
+        //     rsaPublicKey = args[1] as PublicKey
+        // }
+
+        val cipher = Cipher.getInstance(transformationByCandy)
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey)
+        val encryptedBytes = cipher.doFinal(plain.toByteArray(StandardCharsets.UTF_8))
+        return Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
+    }
+
+    @Throws(NoSuchAlgorithmException::class, NoSuchPaddingException::class, InvalidKeyException::class, IllegalBlockSizeException::class, BadPaddingException::class)
+    private fun stringToPublicKey(publicKeyString: String): PublicKey? {
+        // var publicKeyString = publicKeyString
+        return try {
+            // if (publicKeyString.contains("-----BEGIN PUBLIC KEY-----") || publicKeyString.contains("-----END PUBLIC KEY-----")) {
+            //     publicKeyString = publicKeyString.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+            // }
+            val keyBytes = Base64.decode(publicKeyString, Base64.DEFAULT)
+            val spec = X509EncodedKeySpec(keyBytes)
+            val keyFactory = KeyFactory.getInstance("RSA")
+            keyFactory.generatePublic(spec)
+        } catch (e: NoSuchAlgorithmException) {
+            e.printStackTrace()
+            null
+        } catch (e: InvalidKeySpecException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    @Throws(NoSuchAlgorithmException::class, NoSuchPaddingException::class, InvalidKeyException::class, IllegalBlockSizeException::class, BadPaddingException::class)
+    fun decrypt(result: String?): String? {
+        val cipher1 = Cipher.getInstance(transformationByCandy).apply {
+            init(Cipher.DECRYPT_MODE, stringToPrivateKey(privateKey))
+        }
+        val decryptedBytes = cipher1.doFinal(Base64.decode(result, Base64.DEFAULT))
+        val decrypted = String(decryptedBytes)
+        return decrypted
+    }
+
+    @Throws(NoSuchAlgorithmException::class, NoSuchPaddingException::class, InvalidKeyException::class, IllegalBlockSizeException::class, BadPaddingException::class)
+    private fun stringToPrivateKey(privateKeyString: String): PrivateKey? {
+        // var publicKeyString = publicKeyString
+        return try {
+            // if (publicKeyString.contains("-----BEGIN PUBLIC KEY-----") || publicKeyString.contains("-----END PUBLIC KEY-----")) {
+            //     publicKeyString = publicKeyString.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+            // }
+            val keyBytes = Base64.decode(privateKeyString, Base64.DEFAULT)
+            val spec = PKCS8EncodedKeySpec(keyBytes)
+            val keyFactory = KeyFactory.getInstance("RSA")
+            keyFactory.generatePrivate(spec)
+        } catch (e: NoSuchAlgorithmException) {
+            e.printStackTrace()
+            null
+        } catch (e: InvalidKeySpecException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // val keySpecPKCS8 = PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKeyContent))
+    // val privKey: PrivateKey = kf.generatePrivate(keySpecPKCS8)
+    //
+    // val keySpecX509 = X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyContent))
+    // val pubKey: RSAPublicKey = kf.generatePublic(keySpecX509) as RSAPublicKey
+}
+
+
+
+//生成密钥对:密钥对
+
+    //
+    // val instance1 = KeyFactory.getInstance("RSA")
+    //
+    // val privateKeyS: PrivateKey = instance1.generatePrivate(PKCS8EncodedKeySpec(Base64.decode(privateKeyStr, Base64.DEFAULT)))
+    //
+    // val publicKeyS: PublicKey = instance1.generatePublic(X509EncodedKeySpec(Base64.decode(publicKeyStr, Base64.DEFAULT)))
+    //
+    // val input = "你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好"
+    //
+    // println("字符串长度 ：" + input.length)
+    //
+    // println("字符串字节长度 ：" + input.toByteArray().size)//RSE不能超过117个字节
+    //
+    // val encryptBrPrivateKey = RSACrypt.encryptBrPrivateKey(input, privateKeyS)
+    //
+    // println("私钥加密 ： " + encryptBrPrivateKey)
+    //
+    // val encryptBrPublicKey = RSACrypt.encryptBrPublicKey(input, publicKeyS)
+    //
+    // println("公钥加密 ： " + encryptBrPublicKey)
+    //
+    // val desryptBrPrivateKey = RSACrypt.desryptBrPrivateKey(encryptBrPublicKey, privateKeyS)
+    //
+    // println("私钥解密 ： " + desryptBrPrivateKey)
+    //
+    // val decryptBrPublicKey = RSACrypt.decryptBrPublicKey(encryptBrPrivateKey, publicKeyS)
+    //
+    // println("公钥解密 ： " + decryptBrPublicKey)
+
+//******************************************
+
+//    val input = "你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好你好"
+
+//    println("字符串长度 ：" + input.length)
+
+//    println("字符串字节长度 ：" + input.toByteArray().size)//RSE不能超过117个字节
+
+//    val encryptBrPrivateKey = RSACrypt.encryptBrPrivateKey(input, privateKey)
+
+//    println("私钥加密 ：" + encryptBrPrivateKey)
+
+//    val encryptBrPublicKey = RSACrypt.encryptBrPublicKey(input, publicKey)
+
+//    println("公钥加密 ：" + encryptBrPublicKey)
+
+//    val desryptBrPrivateKey = RSACrypt.desryptBrPrivateKey(encryptBrPublicKey, privateKey)
+
+//    println("私钥解密 ：" + desryptBrPrivateKey)
+
+//
+
+//    val decryptBrPublicKey = RSACrypt.decryptBrPublicKey(encryptBrPrivateKey, publicKey)
+
+//    println("公钥解密 ：" + decryptBrPublicKey)
