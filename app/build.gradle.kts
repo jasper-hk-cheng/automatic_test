@@ -18,6 +18,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
         // for Instrumentation on JUnit 5
+
+        flavorDimensions += "default"
     }
 
     buildTypes {
@@ -25,7 +27,24 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        debug {
+            isMinifyEnabled = false
+        }
     }
+
+
+    productFlavors {
+        create("dev") {
+            buildConfigField("String", "TEST_VAR", "\"test_var_dev\"")
+        }
+        create("s_test") {
+            buildConfigField("String", "TEST_VAR", "\"test_var_s_test\"")
+        }
+        create("production") {
+            buildConfigField("String", "TEST_VAR", "\"test_var_production\"")
+        }
+    }
+
     // for instrumentation 的奇怪校正
     // packagingOptions {
     //     resources {
